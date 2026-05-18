@@ -15,6 +15,60 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
+/**
+ * Split a SQL script into individual statements, ignoring ';' that appears
+ * inside single-quoted string literals. Handles backslash escapes and the
+ * doubled-quote ('') escape form used by MySQL/MariaDB.
+ *
+ * @return string[]
+ */
+function split_sql_statements(string $sql): array
+{
+    $statements = [];
+    $buffer = '';
+    $inString = false;
+    $len = strlen($sql);
+
+    for ($i = 0; $i < $len; $i++) {
+        $ch = $sql[$i];
+
+        if ($inString) {
+            $buffer .= $ch;
+            if ($ch === '\\' && $i + 1 < $len) {
+                $buffer .= $sql[$i + 1]; // keep escaped char verbatim
+                $i++;
+                continue;
+            }
+            if ($ch === "'") {
+                if ($i + 1 < $len && $sql[$i + 1] === "'") {
+                    $buffer .= "'"; // doubled-quote escape inside string
+                    $i++;
+                    continue;
+                }
+                $inString = false;
+            }
+            continue;
+        }
+
+        if ($ch === "'") {
+            $inString = true;
+            $buffer .= $ch;
+            continue;
+        }
+        if ($ch === ';') {
+            $statements[] = $buffer;
+            $buffer = '';
+            continue;
+        }
+        $buffer .= $ch;
+    }
+
+    if (trim($buffer) !== '') {
+        $statements[] = $buffer;
+    }
+    return $statements;
+}
+
 $lockFile = __DIR__ . '/config/.installed';
 $localCfg = __DIR__ . '/config/local.php';
 $alreadyInstalled = is_file($lockFile);
@@ -61,9 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!$alreadyInstalled || $force)) {
             if ($sql === false) {
                 throw new RuntimeException('Could not read sql/schema.sql');
             }
-            // Strip line comments, then run statement-by-statement.
-            $clean = preg_replace('/^\s*--.*$/m', '', $sql);
-            foreach (array_filter(array_map('trim', explode(';', (string) $clean))) as $stmt) {
+            // Strip full-line comments, then split into statements with a
+            // quote-aware scanner so semicolons inside string literals
+            // (e.g. the seeded membership benefits text) don't break it.
+            $clean = preg_replace('/^\s*--.*$/m', '', (string) $sql);
+            foreach (split_sql_statements((string) $clean) as $stmt) {
+                $stmt = trim($stmt);
                 if ($stmt !== '') {
                     $pdo->exec($stmt);
                 }
