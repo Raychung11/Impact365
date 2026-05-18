@@ -47,6 +47,7 @@ function dash_nav(string $role): array
                     ['Memberships', 'admin/memberships.php', '★'],
                     ['Payments', 'admin/payments.php', '$'],
                     ['Referrals', 'admin/referrals.php', '⇄'],
+                    ['Messages', 'admin/messages.php', '✉'],
                 ]],
                 ['label' => 'Insight', 'items' => [
                     ['Reports', 'admin/reports.php', '▤'],

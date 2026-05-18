@@ -477,6 +477,21 @@ CREATE TABLE IF NOT EXISTS `resources` (
     REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `contact_messages` (
+  `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name`       VARCHAR(120) NOT NULL,
+  `email`      VARCHAR(190) NOT NULL,
+  `phone`      VARCHAR(20)  DEFAULT NULL,
+  `subject`    VARCHAR(180) DEFAULT NULL,
+  `message`    TEXT         NOT NULL,
+  `status`     ENUM('new','read','archived') NOT NULL DEFAULT 'new',
+  `ip`         VARCHAR(45)  DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_contact_status` (`status`),
+  KEY `idx_contact_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `settings` (
   `skey`       VARCHAR(60)  NOT NULL,
   `svalue`     TEXT         DEFAULT NULL,
@@ -537,5 +552,10 @@ INSERT INTO `settings` (`skey`,`svalue`) VALUES
   ('billplz_collection_id',''),
   ('billplz_x_signature',''),
   ('referral_signup_reward','10.00'),
-  ('referral_membership_reward','36.50')
+  ('referral_membership_reward','36.50'),
+  ('org_legal_name','IMPACT365'),
+  ('contact_email','hello@impact365.my'),
+  ('contact_phone',''),
+  ('contact_address',''),
+  ('social_url','')
 ON DUPLICATE KEY UPDATE `skey`=`skey`;

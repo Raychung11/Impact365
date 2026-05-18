@@ -56,12 +56,17 @@ function layout_footer(): void
     <div>
       <strong style="color:#fff"><?= e(APP_NAME) ?></strong> — <?= e(APP_TAGLINE) ?><br>
       <span class="small">An ESG Community Operating System for Malaysia.</span>
+      <?php $cEmail = (string) setting('contact_email', MAIL_FROM); ?>
+      <br><span class="small">Contact: <a href="mailto:<?= e($cEmail) ?>"><?= e($cEmail) ?></a></span>
     </div>
     <div class="small">
       <a href="<?= e(url('public/events.php')) ?>">Events</a> ·
       <a href="<?= e(url('public/esg.php')) ?>">ESG Projects</a> ·
-      <a href="<?= e(url('auth/register.php')) ?>">Become a Member</a><br>
-      &copy; <?= date('Y') ?> <?= e(APP_NAME) ?>. All rights reserved.
+      <a href="<?= e(url('public/about.php')) ?>">About</a> ·
+      <a href="<?= e(url('public/contact.php')) ?>">Contact</a><br>
+      <a href="<?= e(url('public/privacy.php')) ?>">Privacy Policy</a> ·
+      <a href="<?= e(url('public/terms.php')) ?>">Terms of Service</a><br>
+      &copy; <?= date('Y') ?> <?= e((string) setting('org_legal_name', APP_NAME)) ?>. All rights reserved.
     </div>
   </div>
 </footer>

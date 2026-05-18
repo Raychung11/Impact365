@@ -13,6 +13,7 @@ require_role('admin');
 $keys = [
     'site_name', 'billplz_mode', 'billplz_api_key', 'billplz_collection_id',
     'billplz_x_signature', 'referral_signup_reward', 'referral_membership_reward',
+    'org_legal_name', 'contact_email', 'contact_phone', 'contact_address', 'social_url',
 ];
 
 if (is_post()) {
@@ -40,6 +41,23 @@ dash_header('Settings');
   <h3 class="mb">Branding</h3>
   <div class="form-group"><label>Site name</label>
     <input name="site_name" value="<?= $val('site_name', APP_NAME) ?>"></div>
+
+  <h3 class="mt-lg mb">Organisation &amp; contact</h3>
+  <p class="form-hint mb">Shown in the footer, Privacy Policy, Terms and Contact pages.</p>
+  <div class="row">
+    <div class="col form-group"><label>Legal / organisation name</label>
+      <input name="org_legal_name" value="<?= $val('org_legal_name', APP_NAME) ?>"></div>
+    <div class="col form-group"><label>Contact email</label>
+      <input type="email" name="contact_email" value="<?= $val('contact_email', MAIL_FROM) ?>"></div>
+  </div>
+  <div class="row">
+    <div class="col form-group"><label>Contact phone</label>
+      <input name="contact_phone" value="<?= $val('contact_phone') ?>" placeholder="03-1234 5678"></div>
+    <div class="col form-group"><label>Website / social URL</label>
+      <input name="social_url" value="<?= $val('social_url') ?>" placeholder="https://…"></div>
+  </div>
+  <div class="form-group"><label>Address</label>
+    <textarea name="contact_address" rows="2"><?= $val('contact_address') ?></textarea></div>
 
   <h3 class="mt-lg mb">Billplz payment gateway</h3>
   <p class="form-hint mb">Leave keys blank to run in offline/manual mode (admin confirms payments). Get keys from your Billplz account.</p>
