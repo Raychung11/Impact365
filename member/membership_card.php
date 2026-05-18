@@ -29,7 +29,7 @@ $u = current_user();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IMPACT365 Membership Card</title>
-<link rel="stylesheet" href="<?= e(ASSET_URL) ?>/css/style.css">
+<link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>">
 <style>body{background:#eef1ef;display:flex;flex-direction:column;align-items:center;padding:40px 16px}
 @media print{body{background:#fff;padding:0}.no-print{display:none}}</style>
 </head>

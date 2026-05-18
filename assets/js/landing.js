@@ -32,13 +32,24 @@
       if (!c._done) { c._done = true; countUp(c); }
     });
   }
-  if ('IntersectionObserver' in window && !reduce) {
+  if ('IntersectionObserver' in window && !reduce && reveals.length) {
+    // Opt in to the hidden-then-animate state only now that we know JS runs.
+    document.documentElement.classList.add('js-reveal');
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
         if (en.isIntersecting) { activate(en.target); io.unobserve(en.target); }
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
     reveals.forEach(function (s) { io.observe(s); });
+    // Safety net: if anything is still hidden shortly after load, show it.
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        reveals.forEach(function (s) {
+          var r = s.getBoundingClientRect();
+          if (r.top < window.innerHeight && !s.classList.contains('in')) activate(s);
+        });
+      }, 1200);
+    });
   } else {
     reveals.forEach(activate);
   }

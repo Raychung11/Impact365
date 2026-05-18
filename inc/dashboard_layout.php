@@ -108,7 +108,7 @@ function dash_header(string $pageTitle): void
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= e($pageTitle) ?> · <?= e(APP_NAME) ?></title>
-<link rel="stylesheet" href="<?= e(ASSET_URL) ?>/css/style.css">
+<link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>">
 </head>
 <body>
 <div class="dash">
@@ -163,7 +163,7 @@ function dash_footer(): void
     </div>
   </div>
 </div>
-<script src="<?= e(ASSET_URL) ?>/js/app.js" defer></script>
+<script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </body>
 </html>
 <?php

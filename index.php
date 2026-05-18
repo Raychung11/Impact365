@@ -239,6 +239,6 @@ layout_header();
     </div>
   </div>
 </section>
-<script src="<?= e(ASSET_URL) ?>/js/landing.js" defer></script>
+<script src="<?= e(asset('js/landing.js')) ?>" defer></script>
 <?php
 layout_footer();

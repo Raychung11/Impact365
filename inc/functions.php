@@ -246,6 +246,17 @@ function abs_url(string $path = ''): string
     return ABS_ORIGIN . BASE_PATH . '/' . ltrim($path, '/');
 }
 
+/**
+ * Versioned asset URL. Appends ?v=<file-mtime> so a new deploy busts the
+ * browser/LiteSpeed cache automatically — no more stale CSS/JS after updates.
+ */
+function asset(string $rel): string
+{
+    $rel = ltrim($rel, '/');
+    $mtime = @filemtime(ROOT_PATH . '/assets/' . $rel);
+    return ASSET_URL . '/' . $rel . '?v=' . ($mtime ?: 1);
+}
+
 function redirect(string $path): never
 {
     $loc = preg_match('#^https?://#i', $path) ? $path : url($path);

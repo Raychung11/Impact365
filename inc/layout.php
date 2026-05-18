@@ -21,7 +21,7 @@ function layout_header(string $title = '', string $metaDesc = ''): void
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= e($full) ?></title>
 <meta name="description" content="<?= e($desc) ?>">
-<link rel="stylesheet" href="<?= e(ASSET_URL) ?>/css/style.css">
+<link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>">
 </head>
 <body>
 <header class="site-header">
@@ -70,7 +70,7 @@ function layout_footer(): void
     </div>
   </div>
 </footer>
-<script src="<?= e(ASSET_URL) ?>/js/app.js" defer></script>
+<script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </body>
 </html>
 <?php
