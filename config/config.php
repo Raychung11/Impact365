@@ -52,15 +52,22 @@ define('APP_ENV', env('APP_ENV', 'production'));      // production | developmen
 define('APP_DEBUG', filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOL));
 
 /*
- * BASE_URL — public root of the site, no trailing slash.
- * Auto-detected when not provided so the app works on localhost and on
- * Hostinger without manual edits. Set APP_URL env var to force a value.
+ * URL strategy
+ * ------------
+ * In-app navigation and assets use a ROOT-RELATIVE base (path only). This
+ * makes the site immune to wrong APP_URL / scheme (http vs https) / proxy /
+ * temporary-domain mismatches — CSS, JS, images and links always resolve
+ * against whatever host the browser actually used (no mixed content).
+ *
+ * An absolute origin is kept only for things that genuinely need it
+ * (verification & reset emails, Billplz callbacks). It is built from the
+ * live request first, falling back to APP_URL for CLI/cron.
  */
 $detectedScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
     || (($_SERVER['SERVER_PORT'] ?? null) == 443)
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         ? 'https' : 'http';
-$detectedHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$detectedHost = $_SERVER['HTTP_HOST'] ?? '';
 $detectedBase = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
 // When a script lives in a sub-folder (e.g. /admin) strip it to reach app root.
 foreach (['/admin', '/member', '/organizer', '/corporate', '/trainer', '/auth', '/public'] as $seg) {
@@ -69,7 +76,23 @@ foreach (['/admin', '/member', '/organizer', '/corporate', '/trainer', '/auth', 
         break;
     }
 }
-define('BASE_URL', rtrim((string) env('APP_URL', $detectedScheme . '://' . $detectedHost . $detectedBase), '/'));
+
+// Root-relative path prefix ('' at domain root, or '/subdir').
+define('BASE_PATH', $detectedBase);
+
+// Absolute origin (scheme://host) — prefer the live request; APP_URL is only
+// a fallback for CLI/cron where no request host exists.
+$appUrl = (string) env('APP_URL', '');
+if ($detectedHost !== '') {
+    define('ABS_ORIGIN', $detectedScheme . '://' . $detectedHost);
+} elseif ($appUrl !== '') {
+    define('ABS_ORIGIN', preg_replace('#^(https?://[^/]+).*#', '$1', $appUrl));
+} else {
+    define('ABS_ORIGIN', 'http://localhost');
+}
+
+// Absolute site root (used by emails / payment callbacks).
+define('BASE_URL', ABS_ORIGIN . BASE_PATH);
 
 /* -------------------------------------------------------------------------- */
 /* Filesystem paths                                                            */
@@ -78,8 +101,9 @@ define('ROOT_PATH', dirname(__DIR__));
 define('CONFIG_PATH', __DIR__);
 define('INC_PATH', ROOT_PATH . '/inc');
 define('UPLOAD_PATH', ROOT_PATH . '/uploads');
-define('UPLOAD_URL', BASE_URL . '/uploads');
-define('ASSET_URL', BASE_URL . '/assets');
+// Relative so media always loads from the current host/scheme.
+define('UPLOAD_URL', BASE_PATH . '/uploads');
+define('ASSET_URL', BASE_PATH . '/assets');
 
 /* -------------------------------------------------------------------------- */
 /* Database (PDO / MySQL)                                                       */

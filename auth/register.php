@@ -21,7 +21,7 @@ if (is_post()) {
         // Fire-and-forget verification email (logged to file in dev).
         $u = db_one('SELECT name,email,verify_token FROM users WHERE id = :id', ['id' => $res['user_id']]);
         if ($u && $u['verify_token']) {
-            $link = url('auth/verify.php?token=' . eu($u['verify_token']));
+            $link = abs_url('auth/verify.php?token=' . eu($u['verify_token']));
             send_mail($u['email'], 'Verify your IMPACT365 account',
                 'Hi ' . e($u['name']) . ',<br><br>Welcome to IMPACT365. Please confirm your email address:<br><br>'
                 . '<a href="' . e($link) . '" style="background:#2e6b4a;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none">Verify email</a>'

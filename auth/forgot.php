@@ -13,7 +13,7 @@ if (is_post()) {
     $email = (string) post('email', '');
     $reset = create_password_reset($email);
     if ($reset) {
-        $link = url('auth/reset.php?token=' . eu($reset['token']));
+        $link = abs_url('auth/reset.php?token=' . eu($reset['token']));
         send_mail($reset['user']['email'], 'Reset your IMPACT365 password',
             'Hi ' . e($reset['user']['name']) . ',<br><br>We received a request to reset your password. '
             . 'This link expires in 1 hour:<br><br>'

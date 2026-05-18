@@ -49,8 +49,8 @@ if (Billplz::isConfigured()) {
         $u['email'],
         APP_NAME . ' Membership — ' . $plan['name'],
         (float) $plan['price'],
-        url('billplz_callback.php'),
-        url('billplz_callback.php?invoice=' . eu($invoice)),
+        abs_url('billplz_callback.php'),
+        abs_url('billplz_callback.php?invoice=' . eu($invoice)),
         db_val('SELECT phone FROM users WHERE id = :u', ['u' => $uid])
     );
     if ($bill) {

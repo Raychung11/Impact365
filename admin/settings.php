@@ -56,7 +56,7 @@ dash_header('Settings');
     <div class="col form-group"><label>X-Signature key</label>
       <input name="billplz_x_signature" value="<?= $val('billplz_x_signature') ?>" autocomplete="off"></div>
   </div>
-  <p class="form-hint">Callback URL to set in Billplz: <code><?= e(url('billplz_callback.php')) ?></code></p>
+  <p class="form-hint">Callback URL to set in Billplz: <code><?= e(abs_url('billplz_callback.php')) ?></code></p>
 
   <h3 class="mt-lg mb">Referral rewards</h3>
   <div class="row">

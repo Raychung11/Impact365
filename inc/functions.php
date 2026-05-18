@@ -227,9 +227,23 @@ function render_flashes(): string
 /* -------------------------------------------------------------------------- */
 /* Navigation                                                                  */
 /* -------------------------------------------------------------------------- */
+/**
+ * Root-relative app URL — resolves against whatever host/scheme the browser
+ * used. Use this for all in-page links, assets and redirects.
+ */
 function url(string $path = ''): string
 {
-    return BASE_URL . '/' . ltrim($path, '/');
+    return BASE_PATH . '/' . ltrim($path, '/');
+}
+
+/**
+ * Absolute URL — only for things that leave the browser: verification &
+ * reset emails, Billplz callback/redirect URLs, and displaying the callback
+ * URL in admin settings.
+ */
+function abs_url(string $path = ''): string
+{
+    return ABS_ORIGIN . BASE_PATH . '/' . ltrim($path, '/');
 }
 
 function redirect(string $path): never
