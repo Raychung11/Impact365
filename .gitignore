@@ -1,0 +1,19 @@
+# Local install output & secrets
+config/local.php
+config/.installed
+
+# Runtime
+uploads/_maillog.txt
+*.log
+
+# User-uploaded media (keep folders via .gitkeep)
+uploads/events/*
+uploads/esg/*
+uploads/profiles/*
+uploads/resources/*
+!uploads/**/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
