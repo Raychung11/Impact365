@@ -10,6 +10,7 @@ require_once __DIR__ . '/auth.php';
 
 function layout_header(string $title = '', string $metaDesc = ''): void
 {
+    no_html_cache();
     $full = $title === '' ? APP_NAME . ' — ' . APP_TAGLINE : $title . ' · ' . APP_NAME;
     $desc = $metaDesc !== '' ? $metaDesc
         : 'IMPACT365 — an offline-first ESG Community & Event Operating System for Malaysian SMEs, NGOs, corporates and communities.';

@@ -247,6 +247,22 @@ function abs_url(string $path = ''): string
 }
 
 /**
+ * Tell browsers and the Hostinger/LiteSpeed proxy never to cache the HTML
+ * itself. Assets are still cached (and versioned), but the page that
+ * references them is always fresh — so a deploy is reflected immediately.
+ */
+function no_html_cache(): void
+{
+    if (headers_sent()) {
+        return;
+    }
+    header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('X-LiteSpeed-Cache-Control: no-cache');
+}
+
+/**
  * Versioned asset URL. Appends ?v=<file-mtime> so a new deploy busts the
  * browser/LiteSpeed cache automatically — no more stale CSS/JS after updates.
  */

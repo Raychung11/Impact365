@@ -9,6 +9,7 @@ require_once dirname(__DIR__) . '/inc/auth.php';
 require_once dirname(__DIR__) . '/inc/qrcode.php';
 
 require_login();
+no_html_cache();
 $uid = user_id();
 $m = db_one(
     "SELECT m.*, p.name AS plan FROM memberships m

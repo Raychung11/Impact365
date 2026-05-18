@@ -94,6 +94,7 @@ function dash_nav(string $role): array
 
 function dash_header(string $pageTitle): void
 {
+    no_html_cache();
     $u    = current_user();
     $role = $u['role'] ?? 'member';
     $nav  = dash_nav($role);
