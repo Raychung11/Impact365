@@ -1,0 +1,234 @@
+<?php
+/**
+ * IMPACT365 — Web Installer
+ * -----------------------------------------------------------------------------
+ * One-time, browser-based setup for Hostinger shared hosting:
+ *   1. Tests the MySQL connection with the credentials you provide.
+ *   2. Imports the full schema (sql/schema.sql) including seed data.
+ *   3. Creates your administrator account.
+ *   4. Writes config/local.php so the app uses your credentials.
+ *   5. Locks itself; DELETE this file after a successful install.
+ */
+
+declare(strict_types=1);
+
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
+/**
+ * Split a SQL script into individual statements, ignoring ';' that appears
+ * inside single-quoted string literals. Handles backslash escapes and the
+ * doubled-quote ('') escape form used by MySQL/MariaDB.
+ *
+ * @return string[]
+ */
+function split_sql_statements(string $sql): array
+{
+    $statements = [];
+    $buffer = '';
+    $inString = false;
+    $len = strlen($sql);
+
+    for ($i = 0; $i < $len; $i++) {
+        $ch = $sql[$i];
+
+        if ($inString) {
+            $buffer .= $ch;
+            if ($ch === '\\' && $i + 1 < $len) {
+                $buffer .= $sql[$i + 1]; // keep escaped char verbatim
+                $i++;
+                continue;
+            }
+            if ($ch === "'") {
+                if ($i + 1 < $len && $sql[$i + 1] === "'") {
+                    $buffer .= "'"; // doubled-quote escape inside string
+                    $i++;
+                    continue;
+                }
+                $inString = false;
+            }
+            continue;
+        }
+
+        if ($ch === "'") {
+            $inString = true;
+            $buffer .= $ch;
+            continue;
+        }
+        if ($ch === ';') {
+            $statements[] = $buffer;
+            $buffer = '';
+            continue;
+        }
+        $buffer .= $ch;
+    }
+
+    if (trim($buffer) !== '') {
+        $statements[] = $buffer;
+    }
+    return $statements;
+}
+
+$lockFile = __DIR__ . '/config/.installed';
+$localCfg = __DIR__ . '/config/local.php';
+$alreadyInstalled = is_file($lockFile);
+$force = isset($_GET['force']);
+
+$errors = [];
+$done = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!$alreadyInstalled || $force)) {
+    $dbHost = trim($_POST['db_host'] ?? 'localhost');
+    $dbName = trim($_POST['db_name'] ?? '');
+    $dbUser = trim($_POST['db_user'] ?? '');
+    $dbPass = (string) ($_POST['db_pass'] ?? '');
+    $dbPort = (int) ($_POST['db_port'] ?? 3306);
+    $siteUrl = rtrim(trim($_POST['site_url'] ?? ''), '/');
+    $adminName = trim($_POST['admin_name'] ?? '');
+    $adminEmail = strtolower(trim($_POST['admin_email'] ?? ''));
+    $adminPass = (string) ($_POST['admin_pass'] ?? '');
+
+    if ($dbName === '' || $dbUser === '') {
+        $errors[] = 'Database name and user are required.';
+    }
+    if ($adminName === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL) || strlen($adminPass) < 8) {
+        $errors[] = 'Provide a valid admin name, email and a password of at least 8 characters.';
+    }
+
+    $pdo = null;
+    if (!$errors) {
+        try {
+            $pdo = new PDO(
+                "mysql:host=$dbHost;port=$dbPort;dbname=$dbName;charset=utf8mb4",
+                $dbUser,
+                $dbPass,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+        } catch (PDOException $e) {
+            $errors[] = 'Database connection failed: ' . $e->getMessage();
+        }
+    }
+
+    if (!$errors && $pdo) {
+        try {
+            $sql = file_get_contents(__DIR__ . '/sql/schema.sql');
+            if ($sql === false) {
+                throw new RuntimeException('Could not read sql/schema.sql');
+            }
+            // Strip full-line comments, then split into statements with a
+            // quote-aware scanner so semicolons inside string literals
+            // (e.g. the seeded membership benefits text) don't break it.
+            $clean = preg_replace('/^\s*--.*$/m', '', (string) $sql);
+            foreach (split_sql_statements((string) $clean) as $stmt) {
+                $stmt = trim($stmt);
+                if ($stmt !== '') {
+                    $pdo->exec($stmt);
+                }
+            }
+
+            // Configure the administrator on the seeded admin row.
+            $hash = password_hash($adminPass, PASSWORD_BCRYPT);
+            $existing = $pdo->query("SELECT id FROM users WHERE role='admin' ORDER BY id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            if ($existing) {
+                $up = $pdo->prepare('UPDATE users SET name=?, email=?, password_hash=?, status=\'active\', email_verified=1 WHERE id=?');
+                $up->execute([$adminName, $adminEmail, $hash, $existing['id']]);
+            } else {
+                $ins = $pdo->prepare("INSERT INTO users (name,email,password_hash,role,status,email_verified,referral_code) VALUES (?,?,?,'admin','active',1,'ADMIN365')");
+                $ins->execute([$adminName, $adminEmail, $hash]);
+            }
+
+            // Persist credentials for the app via config/local.php.
+            $key = bin2hex(random_bytes(16));
+            $cfg = "<?php\n// Generated by install.php — do not commit live secrets.\n"
+                . 'putenv("DB_HOST=' . addslashes($dbHost) . '");' . "\n"
+                . 'putenv("DB_NAME=' . addslashes($dbName) . '");' . "\n"
+                . 'putenv("DB_USER=' . addslashes($dbUser) . '");' . "\n"
+                . 'putenv("DB_PASS=' . addslashes($dbPass) . '");' . "\n"
+                . 'putenv("DB_PORT=' . $dbPort . '");' . "\n"
+                . 'putenv("APP_KEY=' . $key . '");' . "\n"
+                . ($siteUrl !== '' ? 'putenv("APP_URL=' . addslashes($siteUrl) . '");' . "\n" : '')
+                . 'putenv("APP_ENV=production");' . "\n";
+            if (file_put_contents($localCfg, $cfg) === false) {
+                throw new RuntimeException('Could not write config/local.php — check folder permissions.');
+            }
+            @file_put_contents($lockFile, date('c'));
+            $done = true;
+        } catch (Throwable $e) {
+            $errors[] = 'Installation error: ' . $e->getMessage();
+        }
+    }
+}
+
+$detScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$detUrl = $detScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+    . rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+?>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install IMPACT365</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card" style="max-width:560px">
+    <div class="card"><div class="card-pad">
+      <h1 style="margin-bottom:2px">Install IMPACT365</h1>
+      <p class="muted mb">ESG Community &amp; Event Operating System setup.</p>
+
+      <?php if ($done): ?>
+        <div class="alert alert-success">
+          <strong>Installation complete!</strong> Your administrator account is ready.
+        </div>
+        <div class="alert alert-warning">
+          For security, <strong>delete <code>install.php</code></strong> from the server now.
+        </div>
+        <a class="btn btn-block" href="auth/login.php">Go to sign in</a>
+      <?php elseif ($alreadyInstalled && !$force): ?>
+        <div class="alert alert-warning">
+          IMPACT365 appears to be installed already. Delete <code>install.php</code>,
+          or append <code>?force=1</code> to re-run (this overwrites configuration).
+        </div>
+        <a class="btn btn-ghost btn-block" href="index.php">Back to site</a>
+      <?php else: ?>
+        <?php foreach ($errors as $er): ?>
+          <div class="alert alert-error"><?= htmlspecialchars($er, ENT_QUOTES) ?></div>
+        <?php endforeach; ?>
+        <form method="post" data-once>
+          <h3 class="mb">Database (MySQL)</h3>
+          <div class="row">
+            <div class="col form-group"><label>DB host</label>
+              <input name="db_host" value="<?= htmlspecialchars($_POST['db_host'] ?? 'localhost', ENT_QUOTES) ?>"></div>
+            <div class="col form-group" style="flex:0 0 110px"><label>Port</label>
+              <input name="db_port" value="<?= htmlspecialchars((string) ($_POST['db_port'] ?? '3306'), ENT_QUOTES) ?>"></div>
+          </div>
+          <div class="form-group"><label>Database name</label>
+            <input name="db_name" required value="<?= htmlspecialchars($_POST['db_name'] ?? '', ENT_QUOTES) ?>"></div>
+          <div class="row">
+            <div class="col form-group"><label>DB user</label>
+              <input name="db_user" required value="<?= htmlspecialchars($_POST['db_user'] ?? '', ENT_QUOTES) ?>"></div>
+            <div class="col form-group"><label>DB password</label>
+              <input type="password" name="db_pass"></div>
+          </div>
+          <div class="form-group"><label>Site URL</label>
+            <input name="site_url" value="<?= htmlspecialchars($_POST['site_url'] ?? $detUrl, ENT_QUOTES) ?>"></div>
+
+          <h3 class="mt-lg mb">Administrator account</h3>
+          <div class="form-group"><label>Full name</label>
+            <input name="admin_name" required value="<?= htmlspecialchars($_POST['admin_name'] ?? 'System Administrator', ENT_QUOTES) ?>"></div>
+          <div class="row">
+            <div class="col form-group"><label>Email</label>
+              <input type="email" name="admin_email" required value="<?= htmlspecialchars($_POST['admin_email'] ?? '', ENT_QUOTES) ?>"></div>
+            <div class="col form-group"><label>Password</label>
+              <input type="password" name="admin_pass" required minlength="8"></div>
+          </div>
+          <button class="btn btn-block mt" type="submit">Install IMPACT365</button>
+        </form>
+      <?php endif; ?>
+    </div></div>
+  </div>
+</div>
+</body>
+</html>
